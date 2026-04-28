@@ -17,7 +17,6 @@ DUCKDB_PATH = DATA_DIR / "cache.duckdb"
 
 LINKEDIN_CLIENT_ID = os.environ.get("LINKEDIN_CLIENT_ID", "")
 LINKEDIN_CLIENT_SECRET = os.environ.get("LINKEDIN_CLIENT_SECRET", "")
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 # Parse account IDs from env
 _raw_ids = os.environ.get("LINKEDIN_ACCOUNT_IDS", "")

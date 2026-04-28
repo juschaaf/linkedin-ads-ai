@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-LinkedIn Ads AI — entry point.
+LinkedIn Ads — entry point.
 
 Usage:
-  python main.py              # Start interactive REPL
+  python main.py              # Start web server (default)
   python main.py --auth       # Run OAuth flow for all configured accounts
   python main.py --auth 123   # Run OAuth flow for a specific account ID
   python main.py --sync       # Sync latest data and exit
@@ -42,20 +42,17 @@ def cmd_sync(weeks_back: int):
             print(f"  ✗ {r['account_id']}: {r.get('error')}")
 
 
-def cmd_repl():
-    from agent import run_repl
-    if not config.ANTHROPIC_API_KEY:
-        print("ERROR: ANTHROPIC_API_KEY not set in .env")
-        sys.exit(1)
+def cmd_server():
+    import server
     cache.init_db()
-    run_repl()
+    server.app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
 
 
 def main():
     args = sys.argv[1:]
 
     if not args:
-        cmd_repl()
+        cmd_server()
         return
 
     if args[0] == "--auth":
