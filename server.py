@@ -7,9 +7,10 @@ Then open http://localhost:5000 in your browser.
 """
 
 import json
+import time
 import threading
 import webbrowser
-from datetime import datetime, date
+from datetime import datetime, date, timedelta, timezone
 from pathlib import Path
 
 from flask import Flask, request, jsonify, send_from_directory
@@ -269,6 +270,18 @@ def do_sync_full():
     return jsonify({"status": "started"})
 
 
+def _daily_sync_scheduler() -> None:
+    """Sleep until midnight UTC, then run a 2-day refresh. Repeats forever."""
+    while True:
+        now = datetime.now(timezone.utc)
+        next_midnight = (now + timedelta(days=1)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        time.sleep((next_midnight - now).total_seconds())
+        if not _sync_status["running"]:
+            _run_sync(days_back=2)
+
+
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
@@ -276,5 +289,6 @@ def do_sync_full():
 if __name__ == "__main__":
     print("\nLinkedIn Ads AI — Web UI")
     print("Opening http://127.0.0.1:5000 in your browser...\n")
+    threading.Thread(target=_daily_sync_scheduler, daemon=True).start()
     threading.Timer(1.0, lambda: webbrowser.open("http://127.0.0.1:5000")).start()
     app.run(host="127.0.0.1", port=5000, debug=False, threaded=True)
