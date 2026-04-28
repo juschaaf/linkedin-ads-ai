@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LinkedIn Ads AI</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2a2e45;
+      --accent: #0a66c2;
+      --accent-hover: #0856a8;
+      --accent-glow: rgba(10,102,194,0.2);
+      --text: #e8eaf0;
+      --text-muted: #6b7280;
+      --text-dim: #9ca3af;
+      --green: #22c55e;
+      --red: #ef4444;
+      --radius: 12px;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      --sidebar-w: 200px;
+    }
+
+    html, body { height: 100%; font-family: var(--font); background: var(--bg); color: var(--text); overflow: hidden; }
+
+    /* ─── App shell ─── */
+    .app { display: flex; height: 100vh; }
+
+    /* ─── Sidebar ─── */
+    .sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      padding: 0;
+    }
+
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 10px;
+      padding: 20px 16px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .logo-mark {
+      width: 30px; height: 30px; border-radius: 7px;
+      background: var(--accent); display: flex; align-items: center;
+      justify-content: center; font-size: 15px; flex-shrink: 0;
+    }
+    .logo-text { font-size: 13px; font-weight: 700; line-height: 1.2; }
+    .logo-sub { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+
+    .sidebar-nav { flex: 1; padding: 12px 8px; display: flex; flex-direction: column; gap: 2px; }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 9px;
+      padding: 8px 10px; border-radius: 8px;
+      font-size: 13px; color: var(--text-muted);
+      cursor: pointer; border: none; background: none;
+      text-align: left; width: 100%;
+      transition: background .12s, color .12s;
+    }
+    .nav-item:hover { background: var(--surface2); color: var(--text); }
+    .nav-item.active { background: var(--accent-glow); color: var(--accent); font-weight: 600; }
+    .nav-item .icon { font-size: 15px; width: 18px; text-align: center; flex-shrink: 0; }
+
+    .sidebar-section-label {
+      font-size: 10px; font-weight: 600; letter-spacing: .07em;
+      text-transform: uppercase; color: var(--text-muted);
+      padding: 14px 10px 4px;
+    }
+
+    .account-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 10px; border-radius: 7px;
+      font-size: 12px; color: var(--text-dim);
+    }
+    .account-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+
+    .sidebar-bottom { padding: 12px 8px 16px; border-top: 1px solid var(--border); }
+
+    .sync-btn {
+      display: flex; align-items: center; gap: 8px;
+      width: 100%; padding: 9px 12px; border-radius: 8px;
+      background: var(--accent); border: none; cursor: pointer;
+      font-size: 12px; font-weight: 600; color: #fff;
+      transition: background .12s;
+    }
+    .sync-btn:hover { background: var(--accent-hover); }
+    .sync-btn:disabled { opacity: .5; cursor: default; }
+    .sync-btn .spin { animation: spin .8s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .sync-info { font-size: 10px; color: var(--text-muted); padding: 6px 10px 0; line-height: 1.4; }
+
+    /* ─── Main content ─── */
+    .main { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+
+    /* ─── Tab bar ─── */
+    .tabs {
+      display: flex; align-items: center;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      padding: 0 24px;
+      flex-shrink: 0;
+    }
+    .tab {
+      padding: 14px 16px; font-size: 13px; font-weight: 500;
+      color: var(--text-muted); cursor: pointer; border: none; background: none;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+      transition: color .12s, border-color .12s;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+
+    /* ─── Panels ─── */
+    .panel { flex: 1; overflow: hidden; display: none; }
+    .panel.active { display: flex; flex-direction: column; }
+
+    /* ══════════════════════════════
+       EXPLORER PANEL
+    ══════════════════════════════ */
+    .explorer { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+
+    .explorer-filters {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 24px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0; flex-wrap: wrap;
+    }
+
+    .filter-group { display: flex; align-items: center; gap: 6px; }
+    .filter-label { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+
+    select, input[type="date"] {
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); border-radius: 7px; padding: 6px 10px;
+      font-size: 12px; font-family: var(--font); outline: none;
+      cursor: pointer;
+      transition: border-color .15s;
+    }
+    select:focus, input[type="date"]:focus { border-color: var(--accent); }
+    select option { background: var(--surface2); }
+
+    .apply-btn {
+      padding: 6px 14px; border-radius: 7px;
+      background: var(--accent); border: none; color: #fff;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      transition: background .12s;
+    }
+    .apply-btn:hover { background: var(--accent-hover); }
+
+    .metric-toggle { display: flex; gap: 4px; }
+    .metric-btn {
+      padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border);
+      background: none; color: var(--text-muted); font-size: 11px;
+      cursor: pointer; transition: all .12s;
+    }
+    .metric-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+
+    .freq-toggle { display: flex; gap: 4px; }
+    .freq-btn {
+      padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border);
+      background: none; color: var(--text-muted); font-size: 11px;
+      cursor: pointer; transition: all .12s;
+    }
+    .freq-btn.active { background: var(--surface2); border-color: var(--accent); color: var(--text); font-weight: 600; }
+
+    /* ─── Multi-select campaign widget ─── */
+    .ms-wrap { position: relative; }
+
+    .ms-trigger {
+      display: flex; align-items: center; justify-content: space-between; gap: 6px;
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); border-radius: 7px; padding: 6px 10px;
+      font-size: 12px; font-family: var(--font); outline: none;
+      cursor: pointer; min-width: 160px; max-width: 220px;
+      transition: border-color .15s; user-select: none;
+    }
+    .ms-trigger:hover, .ms-trigger.open { border-color: var(--accent); }
+    .ms-trigger-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    .ms-chevron { color: var(--text-muted); font-size: 10px; flex-shrink: 0; transition: transform .15s; }
+    .ms-trigger.open .ms-chevron { transform: rotate(180deg); }
+
+    .ms-dropdown {
+      display: none; position: absolute; top: calc(100% + 4px); left: 0;
+      z-index: 50; min-width: 300px; max-width: 420px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,.45);
+      overflow: hidden;
+    }
+    .ms-dropdown.open { display: block; }
+
+    .ms-toolbar {
+      display: flex; align-items: center; gap: 6px;
+      padding: 10px 10px 8px; border-bottom: 1px solid var(--border);
+    }
+    .ms-toolbar-btn {
+      padding: 4px 9px; border-radius: 5px; border: 1px solid var(--border);
+      background: none; color: var(--text-muted); font-size: 11px;
+      cursor: pointer; white-space: nowrap; transition: all .12s;
+    }
+    .ms-toolbar-btn:hover { background: var(--surface2); color: var(--text); }
+    .ms-search {
+      flex: 1; background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); border-radius: 5px; padding: 4px 8px;
+      font-size: 11px; font-family: var(--font); outline: none;
+    }
+    .ms-search:focus { border-color: var(--accent); }
+    .ms-search::placeholder { color: var(--text-muted); }
+
+    .ms-list { max-height: 260px; overflow-y: auto; padding: 4px 0; }
+
+    .ms-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 12px; cursor: pointer;
+      transition: background .1s;
+    }
+    .ms-item:hover { background: var(--surface2); }
+    .ms-item input[type="checkbox"] {
+      width: 13px; height: 13px; flex-shrink: 0; cursor: pointer;
+      accent-color: var(--accent);
+    }
+    .ms-item-name { flex: 1; font-size: 12px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ms-item-count { font-size: 11px; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+
+    .ms-empty { padding: 16px 12px; font-size: 12px; color: var(--text-muted); text-align: center; }
+
+    /* Summary cards */
+    .summary-cards {
+      display: flex; gap: 12px;
+      padding: 16px 24px;
+      flex-shrink: 0; overflow-x: auto;
+    }
+    .card {
+      flex: 1; min-width: 120px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px 16px;
+    }
+    .card-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+    .card-value { font-size: 22px; font-weight: 700; }
+    .card-value.green { color: var(--green); }
+
+    /* Explorer body */
+    .explorer-body {
+      flex: 1; display: grid;
+      grid-template-rows: 3fr 1fr;
+      gap: 0; overflow: hidden;
+      padding: 0 24px 24px;
+      min-height: 0;
+    }
+
+    .chart-section {
+      display: flex; flex-direction: column;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); margin-top: 14px;
+      overflow: hidden; min-height: 0;
+    }
+    .chart-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .chart-title { font-size: 13px; font-weight: 600; }
+    .chart-subtitle { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+    .chart-body { flex: 1; padding: 12px 16px; min-height: 0; position: relative; }
+    canvas { max-height: 100%; }
+
+    /* Top table */
+    .top-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .top-table th {
+      text-align: left; padding: 6px 10px;
+      font-size: 10px; font-weight: 600; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+    .top-table td { padding: 7px 10px; border-bottom: 1px solid var(--border); }
+    .top-table tr:last-child td { border-bottom: none; }
+    .top-table tr:hover td { background: var(--surface2); }
+    .bar-cell { display: flex; align-items: center; gap: 8px; }
+    .bar-track { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .bar-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+
+    /* Empty / loading states */
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100%; gap: 8px; color: var(--text-muted); font-size: 13px;
+    }
+    .empty-state .icon { font-size: 28px; }
+
+    /* Sync modal overlay */
+    .sync-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.6); backdrop-filter: blur(4px);
+      z-index: 100; align-items: center; justify-content: center;
+    }
+    .sync-overlay.visible { display: flex; }
+    .sync-modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 28px 32px; min-width: 360px; max-width: 480px;
+    }
+    .sync-modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+    .sync-log {
+      font-size: 12px; color: var(--text-muted); line-height: 1.8;
+      min-height: 80px; font-family: monospace;
+    }
+    .sync-log .line { padding: 1px 0; }
+    .sync-log .ok { color: var(--green); }
+    .sync-log .err { color: var(--red); }
+    .sync-done-btn {
+      margin-top: 20px; width: 100%; padding: 10px; border-radius: 8px;
+      background: var(--accent); border: none; color: #fff;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      display: none;
+    }
+    .sync-done-btn:hover { background: var(--accent-hover); }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">📊</div>
+      <div>
+        <div class="logo-text">LinkedIn Ads AI</div>
+        <div class="logo-sub">Local · Private</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <button class="nav-item active" onclick="switchTab('explorer')" id="nav-explorer">
+        <span class="icon">📈</span> Explorer
+      </button>
+
+      <div class="sidebar-section-label">Accounts</div>
+      <div id="account-list"></div>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <button class="sync-btn" id="sync-btn" onclick="startSync('/sync')">
+        <span id="sync-icon">🔄</span> Refresh Data
+      </button>
+      <button class="sync-btn" id="sync-full-btn" onclick="startSync('/sync-full')" style="margin-top:6px; background:var(--surface2); border:1px solid var(--border); color:var(--text-dim);">
+        <span>⬇</span> Full Re-sync (365d)
+      </button>
+      <div class="sync-info" id="sync-info">Click to sync latest data</div>
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <div class="main">
+    <div class="tabs">
+      <button class="tab active" id="tab-explorer" onclick="switchTab('explorer')">📈 Explorer</button>
+    </div>
+
+    <!-- ── Explorer Panel ── -->
+    <div class="panel active" id="panel-explorer">
+      <div class="explorer">
+        <!-- Filters -->
+        <div class="explorer-filters">
+          <div class="filter-group">
+            <span class="filter-label">Account</span>
+            <select id="f-account" onchange="onAccountChange()">
+              <option value="">All accounts</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">Campaign</span>
+            <div class="ms-wrap">
+              <div class="ms-trigger" id="ms-trigger" onclick="toggleCampaignDropdown()">
+                <span class="ms-trigger-label" id="ms-label">All campaigns</span>
+                <span class="ms-chevron">▾</span>
+              </div>
+              <div class="ms-dropdown" id="ms-dropdown">
+                <div class="ms-toolbar">
+                  <button class="ms-toolbar-btn" onclick="selectAllCampaigns()">Select all</button>
+                  <button class="ms-toolbar-btn" onclick="clearCampaigns()">Clear</button>
+                  <input class="ms-search" id="ms-search" type="text" placeholder="Search campaigns…" oninput="filterCampaignList()" onclick="event.stopPropagation()">
+                </div>
+                <div class="ms-list" id="ms-list">
+                  <div class="ms-empty">Loading…</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">From</span>
+            <input type="date" id="f-from" />
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">To</span>
+            <input type="date" id="f-to" />
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">Metric</span>
+            <div class="metric-toggle">
+              <button class="metric-btn active" data-metric="spend_usd" onclick="setMetric(this)">Spend</button>
+              <button class="metric-btn" data-metric="spend_pct" onclick="setMetric(this)">% Spend</button>
+              <button class="metric-btn" data-metric="impressions" onclick="setMetric(this)">Impressions</button>
+              <button class="metric-btn" data-metric="clicks" onclick="setMetric(this)">Clicks</button>
+              <button class="metric-btn" data-metric="ctr" onclick="setMetric(this)">CTR</button>
+              <button class="metric-btn" data-metric="cpm" onclick="setMetric(this)">CPM</button>
+            </div>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">Frequency</span>
+            <div class="freq-toggle">
+              <button class="freq-btn" data-freq="daily" onclick="setFrequency(this)">Daily</button>
+              <button class="freq-btn active" data-freq="weekly" onclick="setFrequency(this)">Weekly</button>
+              <button class="freq-btn" data-freq="monthly" onclick="setFrequency(this)">Monthly</button>
+              <button class="freq-btn" data-freq="quarterly" onclick="setFrequency(this)">Quarterly</button>
+            </div>
+          </div>
+          <button class="apply-btn" onclick="loadExplorer()">Apply</button>
+        </div>
+
+        <!-- Summary cards -->
+        <div class="summary-cards">
+          <div class="card"><div class="card-label">Total Spend</div><div class="card-value green" id="s-spend">—</div></div>
+          <div class="card"><div class="card-label">Impressions</div><div class="card-value" id="s-impr">—</div></div>
+          <div class="card"><div class="card-label">Clicks</div><div class="card-value" id="s-clicks">—</div></div>
+          <div class="card"><div class="card-label">Conversions</div><div class="card-value" id="s-conv">—</div></div>
+          <div class="card"><div class="card-label">Avg CTR</div><div class="card-value" id="s-ctr">—</div></div>
+        </div>
+
+        <!-- Charts -->
+        <div class="explorer-body">
+          <div class="chart-section">
+            <div class="chart-header">
+              <div>
+                <div class="chart-title" id="ts-title">Daily Spend Over Time</div>
+                <div class="chart-subtitle" id="ts-subtitle">Grouped by campaign group</div>
+              </div>
+            </div>
+            <div class="chart-body" id="ts-body">
+              <div class="empty-state"><div class="icon">📊</div><div>Apply filters to load data</div></div>
+            </div>
+          </div>
+
+          <div class="chart-section">
+            <div class="chart-header">
+              <div>
+                <div class="chart-title" id="top-title">Top Performers</div>
+                <div class="chart-subtitle">Ranked by selected metric</div>
+              </div>
+            </div>
+            <div class="chart-body" id="top-body" style="overflow-y:auto;">
+              <div class="empty-state"><div class="icon">🏆</div><div>Apply filters to load data</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Sync overlay ── -->
+<div class="sync-overlay" id="sync-overlay">
+  <div class="sync-modal">
+    <h3 id="sync-modal-title">🔄 Syncing data…</h3>
+    <div class="sync-log" id="sync-log"></div>
+    <button class="sync-done-btn" id="sync-done-btn" onclick="closeSyncModal()">Done</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// State
+// ══════════════════════════════════════════════════════════
+let activeTab = 'explorer';
+let activeMetric = 'spend_usd';
+let activeFrequency = 'weekly';
+let tsChart = null;
+let allCampaigns = [];
+let selectedCampaignIds = new Set();
+let lastTimeseriesRows = [];
+
+// ══════════════════════════════════════════════════════════
+// Init
+// ══════════════════════════════════════════════════════════
+window.addEventListener('load', async () => {
+  await loadAccounts();
+  setDefaultDates();
+  await populateCampaigns();
+  await loadExplorer();
+  await loadSyncStatus();
+});
+
+// Close campaign dropdown when clicking outside
+document.addEventListener('click', e => {
+  const wrap = document.querySelector('.ms-wrap');
+  if (wrap && !wrap.contains(e.target)) closeCampaignDropdown();
+});
+
+// ══════════════════════════════════════════════════════════
+// Tab switching
+// ══════════════════════════════════════════════════════════
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+  const navEl = document.getElementById('nav-' + tab);
+  if (navEl) navEl.classList.add('active');
+}
+
+// ══════════════════════════════════════════════════════════
+// Accounts
+// ══════════════════════════════════════════════════════════
+async function loadAccounts() {
+  const res = await fetch('/accounts');
+  const accs = await res.json();
+
+  const list = document.getElementById('account-list');
+  list.innerHTML = accs.map(a =>
+    `<div class="account-item"><div class="account-dot"></div>${a.client_name}</div>`
+  ).join('');
+
+  const sel = document.getElementById('f-account');
+  accs.forEach(a => {
+    const o = document.createElement('option');
+    o.value = a.account_id; o.textContent = a.client_name;
+    sel.appendChild(o);
+  });
+}
+
+async function populateCampaigns() {
+  const accountId = document.getElementById('f-account').value;
+  const dateFrom  = document.getElementById('f-from').value;
+  const dateTo    = document.getElementById('f-to').value;
+
+  const params = new URLSearchParams();
+  if (accountId) params.set('account_id', accountId);
+  if (dateFrom)  params.set('date_from', dateFrom);
+  if (dateTo)    params.set('date_to', dateTo);
+
+  const res = await fetch('/campaigns?' + params);
+  allCampaigns = await res.json();
+
+  const visibleIds = new Set(allCampaigns.map(c => c.campaign_id));
+  for (const id of [...selectedCampaignIds]) {
+    if (!visibleIds.has(id)) selectedCampaignIds.delete(id);
+  }
+
+  renderCampaignList(allCampaigns);
+  updateTriggerLabel();
+}
+
+function renderCampaignList(campaigns) {
+  const list = document.getElementById('ms-list');
+  if (!campaigns.length) {
+    list.innerHTML = '<div class="ms-empty">No campaigns found</div>';
+    return;
+  }
+  list.innerHTML = campaigns.map(c => {
+    const checked = selectedCampaignIds.has(c.campaign_id) ? 'checked' : '';
+    const impr = c.total_impressions > 0 ? num(c.total_impressions) + ' impr' : '—';
+    return `
+      <label class="ms-item">
+        <input type="checkbox" value="${esc(c.campaign_id)}" ${checked}
+               onchange="onCampaignToggle(this)">
+        <span class="ms-item-name" title="${esc(c.name || c.campaign_id)}">${esc(c.name || c.campaign_id)}</span>
+        <span class="ms-item-count">${impr}</span>
+      </label>`;
+  }).join('');
+}
+
+function filterCampaignList() {
+  const q = document.getElementById('ms-search').value.toLowerCase();
+  const filtered = allCampaigns.filter(c => (c.name || '').toLowerCase().includes(q));
+  renderCampaignList(filtered);
+}
+
+function onCampaignToggle(checkbox) {
+  if (checkbox.checked) {
+    selectedCampaignIds.add(checkbox.value);
+  } else {
+    selectedCampaignIds.delete(checkbox.value);
+  }
+  updateTriggerLabel();
+}
+
+function selectAllCampaigns() {
+  document.querySelectorAll('#ms-list input[type="checkbox"]').forEach(cb => {
+    cb.checked = true;
+    selectedCampaignIds.add(cb.value);
+  });
+  updateTriggerLabel();
+}
+
+function clearCampaigns() {
+  selectedCampaignIds.clear();
+  document.querySelectorAll('#ms-list input[type="checkbox"]').forEach(cb => cb.checked = false);
+  updateTriggerLabel();
+}
+
+function updateTriggerLabel() {
+  const label = document.getElementById('ms-label');
+  if (selectedCampaignIds.size === 0) {
+    label.textContent = 'All campaigns';
+  } else if (selectedCampaignIds.size === 1) {
+    const id = [...selectedCampaignIds][0];
+    const c = allCampaigns.find(x => x.campaign_id === id);
+    label.textContent = c ? c.name : id;
+  } else {
+    label.textContent = `${selectedCampaignIds.size} campaigns`;
+  }
+}
+
+function toggleCampaignDropdown() {
+  const trigger  = document.getElementById('ms-trigger');
+  const dropdown = document.getElementById('ms-dropdown');
+  const isOpen   = dropdown.classList.contains('open');
+  if (isOpen) {
+    closeCampaignDropdown();
+  } else {
+    trigger.classList.add('open');
+    dropdown.classList.add('open');
+    document.getElementById('ms-search').focus();
+  }
+}
+
+function closeCampaignDropdown() {
+  document.getElementById('ms-trigger').classList.remove('open');
+  document.getElementById('ms-dropdown').classList.remove('open');
+  const search = document.getElementById('ms-search');
+  if (search) { search.value = ''; renderCampaignList(allCampaigns); }
+}
+
+async function onAccountChange() {
+  await populateCampaigns();
+}
+
+// ══════════════════════════════════════════════════════════
+// Dates
+// ══════════════════════════════════════════════════════════
+function setDefaultDates() {
+  const today = new Date();
+  const prior = new Date(today); prior.setDate(prior.getDate() - 28);
+  document.getElementById('f-to').value = fmtLocal(today);
+  document.getElementById('f-from').value = fmtLocal(prior);
+}
+
+function fmtLocal(d) {
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
+
+function fmt(d) { return fmtLocal(d); }
+
+// ══════════════════════════════════════════════════════════
+// Metric / frequency toggles
+// ══════════════════════════════════════════════════════════
+function setMetric(btn) {
+  document.querySelectorAll('.metric-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeMetric = btn.dataset.metric;
+}
+
+function setFrequency(btn) {
+  document.querySelectorAll('.freq-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeFrequency = btn.dataset.freq;
+  if (lastTimeseriesRows.length) renderTimeseries(lastTimeseriesRows);
+}
+
+// ══════════════════════════════════════════════════════════
+// Explorer — load data
+// ══════════════════════════════════════════════════════════
+async function loadExplorer() {
+  await populateCampaigns();
+
+  const serverMetric = (activeMetric === 'spend_pct' || activeMetric === 'cpm') ? 'spend_usd' : activeMetric;
+  const params = new URLSearchParams({
+    account_id:   document.getElementById('f-account').value,
+    campaign_ids: [...selectedCampaignIds].join(','),
+    date_from:    document.getElementById('f-from').value,
+    date_to:      document.getElementById('f-to').value,
+    metric:       serverMetric,
+  });
+
+  const res = await fetch('/explorer?' + params);
+  const data = await res.json();
+
+  if (data.error) {
+    document.getElementById('ts-body').innerHTML =
+      `<div class="empty-state"><div class="icon">⚠️</div><div>${data.error}</div></div>`;
+    return;
+  }
+
+  renderSummary(data.summary);
+  renderTimeseries(data.timeseries);
+  renderTopTable(data.top);
+}
+
+function renderSummary(s) {
+  document.getElementById('s-spend').textContent = s.total_spend != null ? '$' + fmt$(s.total_spend) : '—';
+  document.getElementById('s-impr').textContent = s.total_impressions != null ? num(s.total_impressions) : '—';
+  document.getElementById('s-clicks').textContent = s.total_clicks != null ? num(s.total_clicks) : '—';
+  document.getElementById('s-conv').textContent = s.total_conversions != null ? num(s.total_conversions) : '—';
+  document.getElementById('s-ctr').textContent = s.avg_ctr != null ? s.avg_ctr.toFixed(2) + '%' : '—';
+}
+
+// ── Frequency bucketing helpers ──
+
+// Parse a YYYY-MM-DD string into { y, m, d } without any timezone conversion.
+// Using new Date('YYYY-MM-DD') treats the string as UTC and can shift the date
+// by up to a day in UTC+ timezones — this avoids that entirely.
+function parseYMD(dateStr) {
+  const parts = String(dateStr).slice(0, 10).split('-');
+  return { y: +parts[0], m: +parts[1] - 1, d: +parts[2] };
+}
+
+function bucketKey(dateStr) {
+  const { y, m, d } = parseYMD(dateStr);
+  if (activeFrequency === 'daily') return dateStr.slice(0, 10);
+  if (activeFrequency === 'weekly') {
+    const dt = new Date(y, m, d);
+    const day = dt.getDay();
+    const diff = (day === 0 ? -6 : 1 - day);
+    const mon = new Date(y, m, d + diff);
+    return fmtLocal(mon);
+  }
+  if (activeFrequency === 'monthly') {
+    return `${y}-${String(m + 1).padStart(2, '0')}-01`;
+  }
+  if (activeFrequency === 'quarterly') {
+    const qMonth = Math.floor(m / 3) * 3 + 1;
+    return `${y}-${String(qMonth).padStart(2, '0')}-01`;
+  }
+  return dateStr.slice(0, 10);
+}
+
+function bucketLabel(key) {
+  const { y, m, d } = parseYMD(key);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  if (activeFrequency === 'daily')   return `${d} ${months[m]}`;
+  if (activeFrequency === 'weekly')  return `W/C ${d} ${months[m]}`;
+  if (activeFrequency === 'monthly') return `${months[m]} ${y}`;
+  if (activeFrequency === 'quarterly') {
+    const q = Math.floor(m / 3) + 1;
+    return `Q${q} ${y}`;
+  }
+  return key;
+}
+
+function renderTimeseries(rows) {
+  lastTimeseriesRows = rows || [];
+  const body = document.getElementById('ts-body');
+  if (!rows || !rows.length) {
+    body.innerHTML = '<div class="empty-state"><div class="icon">📭</div><div>No data for this range</div></div>';
+    if (tsChart) { tsChart.destroy(); tsChart = null; }
+    return;
+  }
+
+  const buckets = {};
+  rows.forEach(r => {
+    const lbl = r.label;
+    const bk  = bucketKey(r.date_start);
+    if (!buckets[lbl]) buckets[lbl] = {};
+    if (!buckets[lbl][bk]) buckets[lbl][bk] = { spend_usd:0, impressions:0, clicks:0, conversions:0 };
+    buckets[lbl][bk].spend_usd    += r.spend_usd || 0;
+    buckets[lbl][bk].impressions  += r.impressions || 0;
+    buckets[lbl][bk].clicks       += r.clicks || 0;
+    buckets[lbl][bk].conversions  += r.conversions || 0;
+  });
+
+  const allKeys = [...new Set(
+    Object.values(buckets).flatMap(bk => Object.keys(bk))
+  )].sort();
+
+  const xLabels = allKeys.map(bucketLabel);
+
+  const totalSpendByBucket = {};
+  if (activeMetric === 'spend_pct') {
+    allKeys.forEach(bk => {
+      totalSpendByBucket[bk] = Object.values(buckets)
+        .reduce((sum, bkData) => sum + (bkData[bk]?.spend_usd || 0), 0);
+    });
+  }
+
+  const calcCpm = d => d.impressions > 0 ? +((d.spend_usd / d.impressions) * 1000).toFixed(2) : 0;
+
+  const palette = ['#0a66c2','#22c55e','#f59e0b','#8b5cf6','#ef4444','#06b6d4','#ec4899','#14b8a6'];
+  const datasets = Object.entries(buckets).map(([label, bkData], i) => {
+    const data = allKeys.map(bk => {
+      const d = bkData[bk] || { spend_usd:0, impressions:0, clicks:0, conversions:0 };
+      if (activeMetric === 'ctr') return d.impressions > 0 ? +(d.clicks * 100 / d.impressions).toFixed(2) : 0;
+      if (activeMetric === 'cpm') return calcCpm(d);
+      if (activeMetric === 'spend_pct') {
+        const total = totalSpendByBucket[bk] || 0;
+        return total > 0 ? +((d.spend_usd / total) * 100).toFixed(1) : 0;
+      }
+      return d[activeMetric] || 0;
+    });
+    return {
+      label,
+      data,
+      borderColor: palette[i % palette.length],
+      backgroundColor: palette[i % palette.length] + '22',
+      fill: true,
+      tension: 0.3,
+      pointRadius: allKeys.length > 60 ? 0 : 3,
+      borderWidth: 2,
+    };
+  });
+
+  body.innerHTML = '<canvas id="ts-canvas"></canvas>';
+  if (tsChart) tsChart.destroy();
+
+  tsChart = new Chart(document.getElementById('ts-canvas'), {
+    type: 'line',
+    data: { labels: xLabels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: '#9ca3af', boxWidth: 12, font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              if (activeMetric === 'spend_usd') return ` ${ctx.dataset.label}: $${fmt$(v)}`;
+              if (activeMetric === 'spend_pct') return ` ${ctx.dataset.label}: ${v.toFixed(1)}%`;
+              if (activeMetric === 'ctr')       return ` ${ctx.dataset.label}: ${v.toFixed(2)}%`;
+              if (activeMetric === 'cpm')       return ` ${ctx.dataset.label}: $${fmt$(v)}`;
+              return ` ${ctx.dataset.label}: ${num(v)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: '#6b7280', maxTicksLimit: 16, font: { size: 10 } }, grid: { color: '#2a2e45' } },
+        y: {
+          ticks: {
+            color: '#6b7280', font: { size: 10 },
+            callback: v => (activeMetric === 'spend_usd' || activeMetric === 'cpm') ? '$' + fmt$(v)
+                         : (activeMetric === 'ctr' || activeMetric === 'spend_pct') ? v.toFixed(1)+'%'
+                         : num(v)
+          },
+          grid: { color: '#2a2e45' }
+        }
+      }
+    }
+  });
+
+  const metricLabel = { spend_usd: 'Spend (USD)', spend_pct: 'Spend Share (%)', impressions: 'Impressions', clicks: 'Clicks', ctr: 'CTR %', cpm: 'CPM' }[activeMetric];
+  const freqLabel   = { daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly', quarterly: 'Quarterly' }[activeFrequency];
+  document.getElementById('ts-title').textContent = `${freqLabel} ${metricLabel} Over Time`;
+  document.getElementById('ts-subtitle').textContent = `${Object.keys(buckets).length} series · ${allKeys.length} ${activeFrequency} periods`;
+}
+
+function renderTopTable(rows) {
+  const body = document.getElementById('top-body');
+  if (!rows || !rows.length) {
+    body.innerHTML = '<div class="empty-state"><div class="icon">🏆</div><div>No data</div></div>';
+    return;
+  }
+
+  const totalSpend = rows.reduce((s, r) => s + (r.spend_usd || 0), 0);
+  const rowsWithPct = rows.map(r => ({
+    ...r,
+    spend_pct: totalSpend > 0 ? +((r.spend_usd / totalSpend) * 100).toFixed(1) : 0,
+    cpm: r.impressions > 0 ? +((r.spend_usd / r.impressions) * 1000).toFixed(2) : 0,
+  }));
+  if (activeMetric === 'spend_pct') rowsWithPct.sort((a, b) => b.spend_pct - a.spend_pct);
+  if (activeMetric === 'cpm')       rowsWithPct.sort((a, b) => b.cpm - a.cpm);
+
+  const sortKey = activeMetric === 'spend_pct' ? 'spend_pct' : activeMetric === 'cpm' ? 'cpm' : activeMetric;
+  const maxVal = Math.max(...rowsWithPct.map(r => r[sortKey] || 0));
+  const metricLabel = { spend_usd: 'Spend', spend_pct: '% of Spend', impressions: 'Impressions', clicks: 'Clicks', ctr: 'CTR %', cpm: 'CPM' }[activeMetric];
+
+  const fmtVal = v => {
+    if (activeMetric === 'spend_usd') return '$' + fmt$(v);
+    if (activeMetric === 'spend_pct') return (v || 0).toFixed(1) + '%';
+    if (activeMetric === 'ctr')       return (v || 0).toFixed(2) + '%';
+    if (activeMetric === 'cpm')       return '$' + fmt$(v);
+    return num(v);
+  };
+
+  body.innerHTML = `
+    <table class="top-table">
+      <thead><tr>
+        <th>Name</th>
+        <th>${metricLabel}</th>
+        <th>Spend</th>
+        <th>Impressions</th>
+        <th>Clicks</th>
+        <th>CTR</th>
+      </tr></thead>
+      <tbody>
+        ${rowsWithPct.map(r => `
+          <tr>
+            <td>${esc(r.label || '—')}</td>
+            <td>
+              <div class="bar-cell">
+                <div class="bar-track"><div class="bar-fill" style="width:${maxVal ? ((r[sortKey]||0)/maxVal*100) : 0}%"></div></div>
+                <span style="white-space:nowrap;min-width:60px">${fmtVal(r[sortKey])}</span>
+              </div>
+            </td>
+            <td>${activeMetric === 'spend_usd' ? '—' : '$' + fmt$(r.spend_usd)}</td>
+            <td>${num(r.impressions)}</td>
+            <td>${num(r.clicks)}</td>
+            <td>${(r.ctr||0).toFixed(2)}%</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+
+  document.getElementById('top-title').textContent = `Top Performers by ${metricLabel}`;
+}
+
+// ══════════════════════════════════════════════════════════
+// Sync
+// ══════════════════════════════════════════════════════════
+async function loadSyncStatus() {
+  const res = await fetch('/sync-status');
+  const s = await res.json();
+  if (s.last) {
+    const d = new Date(s.last);
+    document.getElementById('sync-info').textContent = 'Last sync: ' + d.toLocaleString();
+  }
+}
+
+async function startSync(endpoint) {
+  const btn     = document.getElementById('sync-btn');
+  const fullBtn = document.getElementById('sync-full-btn');
+  const isFull  = endpoint === '/sync-full';
+
+  btn.disabled = true;
+  fullBtn.disabled = true;
+  btn.innerHTML = isFull ? '🔄 Refresh Data' : '<span class="spin">⟳</span> Syncing…';
+  if (isFull) fullBtn.innerHTML = '<span class="spin">⟳</span> Syncing 365d…';
+
+  document.getElementById('sync-log').innerHTML = '';
+  document.getElementById('sync-modal-title').textContent = isFull
+    ? '⬇ Full re-sync (365 days)…'
+    : '🔄 Syncing data…';
+  document.getElementById('sync-done-btn').style.display = 'none';
+  document.getElementById('sync-overlay').classList.add('visible');
+
+  await fetch(endpoint, { method: 'POST' });
+
+  const poll = setInterval(async () => {
+    const res = await fetch('/sync-status');
+    const s = await res.json();
+    const log = document.getElementById('sync-log');
+
+    if (s.progress && s.progress.length) {
+      log.innerHTML = s.progress.map(line => {
+        const cls = line.startsWith('✓') ? 'ok' : line.startsWith('✗') ? 'err' : '';
+        return `<div class="line ${cls}">${esc(line)}</div>`;
+      }).join('');
+    }
+
+    if (!s.running) {
+      clearInterval(poll);
+      document.getElementById('sync-modal-title').textContent = '✅ Sync complete';
+      document.getElementById('sync-done-btn').style.display = 'block';
+      btn.disabled = false;
+      fullBtn.disabled = false;
+      btn.innerHTML = '🔄 Refresh Data';
+      fullBtn.innerHTML = '⬇ Full Re-sync (365d)';
+      if (s.last) {
+        const d = new Date(s.last);
+        document.getElementById('sync-info').textContent = 'Last sync: ' + d.toLocaleString();
+      }
+      await loadExplorer();
+    }
+  }, 800);
+}
+
+function closeSyncModal() {
+  document.getElementById('sync-overlay').classList.remove('visible');
+}
+
+// ══════════════════════════════════════════════════════════
+// Formatters
+// ══════════════════════════════════════════════════════════
+function fmt$(n) {
+  if (n == null) return '0';
+  return Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function num(n) {
+  if (n == null) return '0';
+  return Number(n).toLocaleString('en-US');
+}
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>

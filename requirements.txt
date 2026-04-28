@@ -1,0 +1,7 @@
+anthropic>=0.40.0
+linkedin-api-client>=0.1.8
+duckdb>=1.1.0
+plotly[express]>=5.24.0
+pandas>=2.0.0
+python-dotenv>=1.0.0
+requests>=2.32.0
